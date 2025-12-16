@@ -7,7 +7,7 @@
    ╚═════╝╚═╝  ╚═╝╚═╝     ╚══════╝     ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝
 ```
 
-# Cafe Cursor CLI
+# Cafe Cursor CLI [![CI](https://github.com/Alhwyn/cafe-cursor-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/Alhwyn/cafe-cursor-cli/actions/workflows/ci.yml)
 
 A CLI tool for managing and sending Cursor credits to event attendees via email.
 

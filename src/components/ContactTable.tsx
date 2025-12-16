@@ -111,7 +111,7 @@ const ContactTable = ({ contacts, onSelect, onBack, isActive = true }: ContactTa
     <Box flexDirection="column" width="100%">
       {/* Header */}
       <Box>
-        <Text bold color="gray">
+        <Text bold color="white">
           {"  "}
           {padRight("Name", cols.name)}
           {padRight("Email", cols.email)}

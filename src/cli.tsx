@@ -70,9 +70,9 @@ const MainMenu = () => {
   });
 
   const menuItems = [
-    { label: "1. Send Cursor Credits", value: "send" },
-    { label: "2. Upload Cursor Credits", value: "upload" },
-    { label: "3. Upload Attendees", value: "attendees" },
+    { label: "Send Cursor Credits", value: "send" },
+    { label: "Upload Cursor Credits", value: "upload" },
+    { label: "Upload Attendees", value: "attendees" },
   ];
 
   const handleSelect = (item: { label: string; value: string }) => {
@@ -133,10 +133,10 @@ const MainMenu = () => {
           />
         </Box>
         <Box marginTop={1} gap={2}>
-          <Text dimColor={highlighted !== "send"}><Text inverse> 1 </Text> Send</Text>
-          <Text dimColor={highlighted !== "upload"}><Text inverse> 2 </Text> Credits</Text>
-          <Text dimColor={highlighted !== "attendees"}><Text inverse> 3 </Text> Attendees</Text>
-          <Text dimColor><Text inverse> Q </Text> Quit</Text>
+          <Text color={highlighted === "send" ? "white" : "gray"}><Text inverse> 1 </Text> Send</Text>
+          <Text color={highlighted === "upload" ? "white" : "gray"}><Text inverse> 2 </Text> Credits</Text>
+          <Text color={highlighted === "attendees" ? "white" : "gray"}><Text inverse> 3 </Text> Attendees</Text>
+          <Text color="gray"><Text inverse> Q </Text> Quit</Text>
         </Box>
       </Box>
     </Box>

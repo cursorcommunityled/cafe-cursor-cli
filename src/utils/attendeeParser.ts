@@ -56,7 +56,7 @@ export async function parseAttendeeCSV(filepath: string): Promise<Attendee[]> {
     throw new Error("CSV must have a header row and at least one data row");
   }
 
-  const headers = parseCSVLine(lines[0]);
+  const headers = parseCSVLine(lines[0]!);
   const columnIndexes: Partial<Record<keyof Attendee, number>> = {};
 
   // Map headers to column indexes
@@ -81,7 +81,7 @@ export async function parseAttendeeCSV(filepath: string): Promise<Attendee[]> {
   const attendees: Attendee[] = [];
 
   for (let i = 1; i < lines.length; i++) {
-    const values = parseCSVLine(lines[i]);
+    const values = parseCSVLine(lines[i]!);
 
     const firstName = values[columnIndexes.firstName!] || "";
     const lastName = values[columnIndexes.lastName!] || "";
