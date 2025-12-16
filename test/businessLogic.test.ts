@@ -86,11 +86,11 @@ describe("People Storage", () => {
 
       const result = addPerson(testCase.person, tempDir);
 
-      expect(result.added).toBe(testCase.expected.added);
-      expect(result.skipped).toBe(testCase.expected.skipped);
+      expect(result.added).toBe(testCase.expected.added!);
+      expect(result.skipped).toBe(testCase.expected.skipped!);
 
       const people = loadPeople(tempDir);
-      expect(people.length).toBe(testCase.expected.totalPeople);
+      expect(people.length).toBe(testCase.expected.totalPeople!);
     });
 
     test("skips duplicate email (case insensitive)", () => {
@@ -163,7 +163,7 @@ describe("Credits Storage", () => {
 
       const result = addCreditIfNotExists(testCase.credit!, tempDir);
 
-      expect(result.added).toBe(testCase.expected.added);
+      expect(result.added).toBe(testCase.expected.added!);
 
       const credits = loadCredits(tempDir);
       expect(credits.length).toBe(1);

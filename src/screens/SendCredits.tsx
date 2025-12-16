@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import ContactTable from "../components/ContactTable.js";
@@ -17,6 +17,7 @@ const SendCredits = ({ onBack }: SendCreditsProps) => {
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [showNotSentOnly, setShowNotSentOnly] = useState(false);
+  const [showSentOnly, setShowSentOnly] = useState(false);
 
   // Email sending state
   const [isSending, setIsSending] = useState(false);
@@ -27,6 +28,19 @@ const SendCredits = ({ onBack }: SendCreditsProps) => {
   const { data: people, refresh: refreshPeople } = usePeopleList();
   const { data: creditTally, refresh: refreshCredits } = useCreditTally();
   const sendCredits = useSendCredits();
+
+  // Refresh data when entering the page
+  useEffect(() => {
+    refreshPeople();
+    refreshCredits();
+  }, []);
+
+  // Handle going back - refresh data before leaving
+  const handleBack = () => {
+    refreshPeople();
+    refreshCredits();
+    onBack();
+  };
 
   // Transform database people to Contact format
   const contacts: Contact[] = useMemo(() => {
@@ -52,6 +66,8 @@ const SendCredits = ({ onBack }: SendCreditsProps) => {
     // Filter by sent status
     if (showNotSentOnly) {
       filtered = filtered.filter((contact) => !contact.sent);
+    } else if (showSentOnly) {
+      filtered = filtered.filter((contact) => contact.sent);
     }
     
     // Filter by search query
@@ -67,7 +83,7 @@ const SendCredits = ({ onBack }: SendCreditsProps) => {
     }
     
     return filtered;
-  }, [contacts, searchQuery, showNotSentOnly]);
+  }, [contacts, searchQuery, showNotSentOnly, showSentOnly]);
 
   // Toggle focus between search and table
   useInput((input, key) => {
@@ -81,6 +97,10 @@ const SendCredits = ({ onBack }: SendCreditsProps) => {
       setIsSearchFocused(true);
     } else if (input === "f" && !isSearchFocused) {
       setShowNotSentOnly((prev) => !prev);
+      setShowSentOnly(false);
+    } else if (input === "s" && !isSearchFocused) {
+      setShowSentOnly((prev) => !prev);
+      setShowNotSentOnly(false);
     }
   });
 
@@ -181,12 +201,13 @@ const SendCredits = ({ onBack }: SendCreditsProps) => {
         <Text bold color="white">Send Cursor Credits</Text>
         <Text dimColor> ({filteredContacts.length} recipients)</Text>
         {showNotSentOnly && <Text color="yellow"> [Not Sent Only]</Text>}
+        {showSentOnly && <Text color="cyan"> [Sent Only]</Text>}
       </Box>
 
       <ContactTable 
         contacts={filteredContacts} 
         onSelect={handleSelect}
-        onBack={onBack}
+        onBack={handleBack}
         isActive={!isSearchFocused}
       />
 
@@ -220,7 +241,8 @@ const SendCredits = ({ onBack }: SendCreditsProps) => {
         <Text dimColor={isSearchFocused}><Text inverse> Up/Down </Text> Navigate</Text>
         <Text dimColor={isSearchFocused}><Text inverse> Enter </Text> Select</Text>
         <Text><Text inverse> Tab </Text> {isSearchFocused ? "Exit Search" : "Search"}</Text>
-        <Text dimColor={isSearchFocused}><Text inverse> F </Text> Filter Not Sent</Text>
+        <Text dimColor={isSearchFocused}><Text inverse> F </Text> Not Sent</Text>
+        <Text dimColor={isSearchFocused}><Text inverse> S </Text> Sent Only</Text>
         <Text dimColor={isSearchFocused}><Text inverse> Q </Text> Back</Text>
       </Box>
     </Box>

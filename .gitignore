@@ -34,4 +34,4 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 .DS_Store
 cafe_cursor.csv
 credits.csv
-convex/_generated
+# convex/_generated is now committed with stubs for CI

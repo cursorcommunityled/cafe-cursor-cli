@@ -143,7 +143,7 @@ const UploadAttendees = ({ onBack }: UploadAttendeesProps) => {
         </Box>
 
         <Box flexDirection="column" marginBottom={1}>
-          <Text color="yellow">Expected CSV columns:</Text>
+          <Text color="white">Expected CSV columns:</Text>
           <Text dimColor>  - first_name (required)</Text>
           <Text dimColor>  - last_name (required)</Text>
           <Text dimColor>  - email (required)</Text>
@@ -208,7 +208,7 @@ const UploadAttendees = ({ onBack }: UploadAttendeesProps) => {
 
         <Box marginBottom={1}>
           <Text>Processing: </Text>
-          <Text color="yellow">{filepath}</Text>
+          <Text color="white">{filepath}</Text>
         </Box>
 
         <ProgressBar current={progress.current} total={progress.total} />
@@ -242,8 +242,8 @@ const UploadAttendees = ({ onBack }: UploadAttendeesProps) => {
           <Text bold color="green">{result.imported}</Text>
         </Text>
         <Text>
-          <Text color="yellow">Skipped (duplicates): </Text>
-          <Text bold color="yellow">{result.skipped}</Text>
+          <Text color="white">Skipped (duplicates): </Text>
+          <Text bold color="white">{result.skipped}</Text>
         </Text>
       </Box>
 
