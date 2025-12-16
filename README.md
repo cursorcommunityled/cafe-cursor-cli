@@ -58,7 +58,7 @@ This will create a new Convex project and start syncing your schema.
 Create a `.env` file in the root directory:
 
 ```env
-CONVEX_URL=https://your-deployment.convex.cloud
+CONVEX_URL=https://your-deployment.convex.cloud # if you deploy in the cloud
 RESEND_API_KEY=re_xxxxxxxxxxxxx
 RESEND_FROM_EMAIL=credits@yourdomain.com
 ```
@@ -162,7 +162,3 @@ cafe-cursor-cli/
 │   └── utils/           # Utility functions (includes localStorage)
 └── test/                # Test files
 ```
-
-## License
-
-MIT
