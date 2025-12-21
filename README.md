@@ -23,8 +23,8 @@ A CLI tool for managing and sending Cursor credits to event attendees via email.
 ## Prerequisites
 
 - [Bun](https://bun.sh) (v1.0 or later)
-- [Convex](https://convex.dev) account
-- [Resend](https://resend.com) account with verified domain
+- [Convex](https://convex.dev) account (optional, only for Cloud Mode)
+- [Resend](https://resend.com) account with verified domain (optional, only for Cloud Mode)
 
 ## Setup
 
@@ -41,7 +41,21 @@ cd cafe-cursor-cli
 bun install
 ```
 
-### 3. Set up Convex
+### 3. Run the CLI
+
+```bash
+bun run cli
+```
+
+That's it for **Local Mode**! The CLI will use CSV files for storage and no external services are required.
+
+---
+
+### Optional: Set up Convex (Cloud Mode)
+
+If you want to use Cloud Mode with database sync and email sending, follow these additional steps:
+
+#### 3a. Set up Convex
 
 ```bash
 # Login to Convex
@@ -53,19 +67,19 @@ bunx convex dev
 
 This will create a new Convex project and start syncing your schema.
 
-### 4. Configure environment variables
+#### 3b. Configure environment variables
 
 Create a `.env` file in the root directory:
 
 ```env
-CONVEX_URL=https://your-deployment.convex.cloud # if you deploy in the cloud
+CONVEX_URL=https://your-deployment.convex.cloud
 RESEND_API_KEY=re_xxxxxxxxxxxxx
 RESEND_FROM_EMAIL=credits@yourdomain.com
 ```
 
 You can find your `CONVEX_URL` in the Convex dashboard after running `bunx convex dev`.
 
-### 5. Set up Convex environment variables
+#### 3c. Set up Convex environment variables
 
 Go to your [Convex Dashboard](https://dashboard.convex.dev):
 1. Select your project
@@ -73,12 +87,6 @@ Go to your [Convex Dashboard](https://dashboard.convex.dev):
 3. Add:
    - `RESEND_API_KEY` - Your Resend API key
    - `RESEND_FROM_EMAIL` - Your verified sender email
-
-### 6. Run the CLI
-
-```bash
-bun run cli
-```
 
 ## Usage
 
@@ -136,7 +144,7 @@ bun test
 bun run build
 ```
 
-### Start Convex dev server
+### Start Convex dev server (optional, for Cloud Mode)
 
 ```bash
 bunx convex dev
@@ -146,7 +154,7 @@ bunx convex dev
 
 ```
 cafe-cursor-cli/
-├── convex/              # Convex backend
+├── convex/              # Convex backend (optional, for Cloud Mode)
 │   ├── schema.ts        # Database schema
 │   ├── credits.ts       # Credit mutations/queries
 │   ├── people.ts        # People mutations/queries
