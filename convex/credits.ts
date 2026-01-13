@@ -128,3 +128,34 @@ export const markSent = mutation({
     });
   },
 });
+
+// List all sent credits with person info (for redemption checking)
+export const listSentWithPerson = query({
+  handler: async (ctx) => {
+    const credits = await ctx.db
+      .query("credits")
+      .withIndex("by_status", (q) => q.eq("status", "sent"))
+      .collect();
+
+    // Join with people to get names
+    return Promise.all(
+      credits.map(async (credit) => {
+        const person = credit.assignedTo
+          ? await ctx.db.get(credit.assignedTo)
+          : null;
+        return { ...credit, person };
+      })
+    );
+  },
+});
+
+// Mark credit as redeemed
+export const markRedeemed = mutation({
+  args: { creditId: v.id("credits") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.creditId, {
+      status: "redeemed",
+      checkedAt: Date.now(),
+    });
+  },
+});

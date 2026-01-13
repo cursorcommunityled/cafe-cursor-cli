@@ -7,6 +7,7 @@ import { ConvexProvider, ConvexReactClient } from "convex/react";
 import SendCredits from "./screens/SendCredits.js";
 import UploadCredits from "./screens/UploadCredits.js";
 import UploadAttendees from "./screens/UploadAttendees.js";
+import CheckRedemptions from "./screens/CheckRedemptions.js";
 import ModeSelector from "./components/ModeSelector.js";
 import { StorageProvider, useStorage, type StorageMode } from "./context/StorageContext.js";
 
@@ -20,7 +21,7 @@ const hasCloudConfig = Boolean(
 // Only create Convex client if we have the URL
 const convex = new ConvexReactClient(process.env.CONVEX_URL!);
 
-type Screen = "menu" | "send" | "upload" | "attendees";
+type Screen = "menu" | "send" | "upload" | "attendees" | "check";
 
 const clearScreen = () => {
   process.stdout.write("\x1B[2J\x1B[0f");
@@ -66,6 +67,9 @@ const MainMenu = () => {
     } else if (input === "3") {
       clearScreen();
       setScreen("attendees");
+    } else if (input === "4") {
+      clearScreen();
+      setScreen("check");
     }
   });
 
@@ -73,6 +77,7 @@ const MainMenu = () => {
     { label: "Send Cursor Credits", value: "send" },
     { label: "Upload Cursor Credits", value: "upload" },
     { label: "Upload Attendees", value: "attendees" },
+    { label: "Check Credit Redemptions", value: "check" },
   ];
 
   const handleSelect = (item: { label: string; value: string }) => {
@@ -98,6 +103,11 @@ const MainMenu = () => {
   // Render Upload Attendees screen
   if (screen === "attendees") {
     return <UploadAttendees onBack={handleBack} />;
+  }
+
+  // Render Check Redemptions screen
+  if (screen === "check") {
+    return <CheckRedemptions onBack={handleBack} />;
   }
 
   // Render main menu
@@ -136,6 +146,7 @@ const MainMenu = () => {
           <Text color={highlighted === "send" ? "white" : "gray"}><Text inverse> 1 </Text> Send</Text>
           <Text color={highlighted === "upload" ? "white" : "gray"}><Text inverse> 2 </Text> Credits</Text>
           <Text color={highlighted === "attendees" ? "white" : "gray"}><Text inverse> 3 </Text> Attendees</Text>
+          <Text color={highlighted === "check" ? "white" : "gray"}><Text inverse> 4 </Text> Check</Text>
           <Text color="gray"><Text inverse> Q </Text> Quit</Text>
         </Box>
       </Box>

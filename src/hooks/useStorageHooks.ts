@@ -186,3 +186,85 @@ export function useSendCredits() {
     return cloudAction({ personId: personId as Id<"people"> });
   }, [isLocal, dataPath, cloudAction]);
 }
+
+// Type for sent credit with person info
+export interface SentCreditWithPerson {
+  id: string;
+  url: string;
+  code: string;
+  amount: number;
+  person: {
+    firstName: string;
+    lastName: string;
+    email: string;
+  } | null;
+}
+
+// Hook for listing sent credits with person info
+export function useSentCredits(): { data: SentCreditWithPerson[] | undefined; refresh: () => void } {
+  const { isLocal, dataPath } = useStorage();
+  const [localData, setLocalData] = useState<SentCreditWithPerson[] | undefined>(undefined);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Cloud query - use "skip" when in local mode
+  const cloudData = useConvexQuery(api.credits.listSentWithPerson, isLocal ? "skip" : {});
+
+  // Load local data
+  useEffect(() => {
+    if (isLocal) {
+      const sentCredits = localStorage.loadSentCreditsWithPerson(dataPath);
+      setLocalData(sentCredits.map(({ credit, person }) => ({
+        id: credit.id,
+        url: credit.url,
+        code: credit.code,
+        amount: credit.amount,
+        person: person ? {
+          firstName: person.firstName,
+          lastName: person.lastName,
+          email: person.email,
+        } : null,
+      })));
+    }
+  }, [isLocal, dataPath, refreshKey]);
+
+  const refresh = useCallback(() => {
+    setRefreshKey(k => k + 1);
+  }, []);
+
+  if (isLocal) {
+    return { data: localData, refresh };
+  }
+
+  const data = cloudData?.map(item => ({
+    id: item._id,
+    url: item.url,
+    code: item.code,
+    amount: item.amount,
+    person: item.person ? {
+      firstName: item.person.firstName,
+      lastName: item.person.lastName,
+      email: item.person.email,
+    } : null,
+  }));
+
+  return { data, refresh };
+}
+
+// Hook for marking credit as redeemed
+export function useMarkRedeemed() {
+  const { isLocal, dataPath } = useStorage();
+  const cloudMutation = useConvexMutation(api.credits.markRedeemed);
+
+  return useCallback(async (creditId: string): Promise<boolean> => {
+    if (isLocal) {
+      return localStorage.markCreditRedeemed(creditId, dataPath);
+    }
+
+    try {
+      await cloudMutation({ creditId: creditId as Id<"credits"> });
+      return true;
+    } catch {
+      return false;
+    }
+  }, [isLocal, dataPath, cloudMutation]);
+}
