@@ -26,6 +26,7 @@ export interface LocalCredit {
   code: string;
   amount: number;
   available: boolean;
+  status?: string; // "available", "sent", "redeemed"
   assignedTo?: string;
   createdAt: string;
 }
@@ -222,4 +223,36 @@ export const tallyCredits = (basePath?: string): {
       sent: sent.length,
     },
   };
+};
+
+// Load sent credits with person info (for redemption checking)
+export const loadSentCreditsWithPerson = (basePath?: string): Array<{
+  credit: LocalCredit;
+  person: LocalPerson | null;
+}> => {
+  const credits = loadCredits(basePath);
+  const people = loadPeople(basePath);
+  
+  // Filter to only sent credits (assigned but not redeemed)
+  const sentCredits = credits.filter(c => c.assignedTo && c.status !== "redeemed");
+  
+  return sentCredits.map(credit => {
+    const person = people.find(p => p.id === credit.assignedTo) || null;
+    return { credit, person };
+  });
+};
+
+// Mark a credit as redeemed
+export const markCreditRedeemed = (creditId: string, basePath?: string): boolean => {
+  const credits = loadCredits(basePath);
+  const index = credits.findIndex(c => c.id === creditId);
+  
+  if (index === -1) {
+    return false;
+  }
+
+  credits[index]!.status = "redeemed";
+  saveCredits(credits, basePath);
+  
+  return true;
 };
