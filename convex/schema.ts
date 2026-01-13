@@ -26,5 +26,6 @@ export default defineSchema({
     sentAt: v.optional(v.number()),
   })
     .index("by_status", ["status"])
-    .index("by_code", ["code"]),
+    .index("by_code", ["code"])
+    .index("by_assignedTo", ["assignedTo"]),
 });
