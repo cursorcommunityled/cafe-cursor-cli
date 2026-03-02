@@ -35,3 +35,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 cafe_cursor.csv
 credits.csv
 # convex/_generated is now committed with stubs for CI
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat
+.gitignore
