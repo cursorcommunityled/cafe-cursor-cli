@@ -19,71 +19,62 @@ function extractCode(url: string): string | null {
   return match?.[1] ?? null;
 }
 
-// Check referral by intercepting API response in browser
+const REDEEMED_INDICATORS = [
+  /already been used/i,
+  /already used/i,
+  /referral has been redeemed/i,
+  /this referral has already/i,
+];
+
+// Check referral by scraping the DOM for credit modal
 async function checkReferralInBrowser(
   page: Page,
   url: string
 ): Promise<{ available: boolean; redeemed?: boolean; unknown?: boolean; amount?: number }> {
-  return new Promise((resolve) => {
-    let resolved = false;
+  try {
+    await page.goto(url, { waitUntil: "networkidle", timeout: TIMEOUT_MS });
+  } catch {
+    return { available: false, unknown: true };
+  }
 
-    const timeout = setTimeout(() => {
-      if (!resolved) {
-        resolved = true;
-        resolve({ available: false, unknown: true });
-      }
-    }, TIMEOUT_MS);
+  const waitTimeout = 10000;
 
-    // Listen for API response
-    const responseHandler = async (response: any) => {
-      if (response.url().includes("/api/dashboard/check-referral-code") && !resolved) {
-        resolved = true;
-        clearTimeout(timeout);
+  try {
+    // Wait for either credit modal or redeemed indicator to appear
+    const creditH1 = page.locator("h1").filter({ hasText: /You've received a \$[\d.]+ credit!/ });
+    const getStartedButton = page.getByRole("button", { name: "Get Started" });
 
-        try {
-          const statusCode = response.status();
+    // Check for redeemed state first (page may show "already used" etc.)
+    const pageContent = await page.content();
+    const isRedeemed = REDEEMED_INDICATORS.some((re) => re.test(pageContent));
+    if (isRedeemed) {
+      return { available: false, redeemed: true };
+    }
 
-          if (statusCode === 200) {
-            const json = await response.json();
+    // Wait for credit h1 to appear
+    await creditH1.waitFor({ state: "visible", timeout: waitTimeout });
 
-            // Active: { isValid: true, userIsEligible: true, metadata: {...} }
-            if (json && typeof json === "object" && "isValid" in json) {
-              const { isValid, userIsEligible } = json;
-              if (isValid && userIsEligible) {
-                resolve({ available: true, amount: json.metadata?.amount ?? 20 });
-                return;
-              }
-              resolve({ available: false, redeemed: true });
-              return;
-            }
+    const h1Text = await creditH1.first().textContent();
+    const amountMatch = h1Text?.match(/\$([\d.]+)/);
+    const amount = amountMatch?.[1] != null ? parseFloat(amountMatch[1]) : 20;
 
-            // Empty object {} = redeemed
-            if (json && typeof json === "object" && Object.keys(json).length === 0) {
-              resolve({ available: false, redeemed: true });
-              return;
-            }
-          }
+    // Confirm Get Started button exists (credit-available state)
+    const buttonVisible = await getStartedButton.isVisible();
+    if (buttonVisible) {
+      return { available: true, amount };
+    }
 
-          resolve({ available: false, unknown: true });
-        } catch {
-          resolve({ available: false, unknown: true });
-        } finally {
-          page.off("response", responseHandler);
-        }
-      }
-    };
-
-    page.on("response", responseHandler);
-
-    // Navigate to the referral page
-    page.goto(url, { waitUntil: "networkidle", timeout: TIMEOUT_MS }).catch(() => {
-      if (!resolved) {
-        resolved = true;
-        clearTimeout(timeout);
-        resolve({ available: false, unknown: true });
-      }
-    });
-  });
+    // H1 found but no button - treat as available with parsed amount
+    return { available: true, amount };
+  } catch {
+    // Timeout or element not found - check if we got a redeemed page that loaded differently
+    const pageContent = await page.content();
+    const isRedeemed = REDEEMED_INDICATORS.some((re) => re.test(pageContent));
+    if (isRedeemed) {
+      return { available: false, redeemed: true };
+    }
+    return { available: false, unknown: true };
+  }
 }
 
 // Shared browser instance for batch checking
