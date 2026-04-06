@@ -9,7 +9,7 @@
     "dev": "bun --hot src/index.ts",
     "start": "NODE_ENV=production bun src/index.ts",
     "build": "bun run build.ts",
-    "test": "bun test ./test/businessLogic.test.ts",
+    "test": "bun test ./test/",
     "test:creditChecker": "bun test/creditChecker.test.ts",
     "debug": "bun debug.ts"
   },
