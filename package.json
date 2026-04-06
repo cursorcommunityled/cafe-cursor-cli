@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "cli": "bun src/cli.tsx",
+    "luma:webhook": "bun src/lumaWebhookServer.ts",
     "dev": "bun --hot src/index.ts",
     "start": "NODE_ENV=production bun src/index.ts",
     "build": "bun run build.ts",
@@ -16,7 +17,6 @@
     "@react-email/components": "^1.0.1",
     "bun-plugin-tailwind": "^0.1.2",
     "chalk": "^5.6.2",
-    "convex": "^1.31.0",
     "figlet": "^1.9.4",
     "ink": "^6.5.1",
     "ink-select-input": "^6.2.0",
