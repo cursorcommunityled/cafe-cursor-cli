@@ -59,7 +59,9 @@ By default, attendee and credit data is stored as `cafe_people.csv` and `cafe_cr
 
 If Resend is not configured, the CLI and webhook still assign credits in CSV only (no outbound email).
 
-## Luma check-in webhook
+## Luma check-in webhook (API-first for operators)
+
+Integration is **server-to-server**: your deployment holds a [Luma API key](https://docs.luma.com/reference/getting-started-with-your-api) and optional Resend keys. End users do not configure Luma; they only receive the credit email after check-in.
 
 Luma does **not** list a separate webhook type only for check-in. Per [Luma’s webhooks help](https://help.lu.ma/p/webhooks), **Guest Updated** fires when check-in status (and other guest fields) change, with payload type `guest.updated`. This server listens **only** for `guest.updated` and still **re-checks** check-in via the API before sending a code, so profile-only updates do not trigger a credit.
 
@@ -69,12 +71,29 @@ This repo includes a small HTTP server that:
 2. Confirms the guest is checked in using `GET /v1/event/get-guest` ([Luma API](https://docs.luma.com/reference/getting-started-with-your-api)) (per-ticket `checked_in_at`)
 3. Sends one Cursor credit email per event + guest (deduped via `cafe_luma_sent_guests.txt`)
 
+### Register the webhook via Luma API (recommended)
+
+Operators run this once (uses [`POST /v1/webhooks/create`](https://docs.luma.com/reference/post_v1-webhooks-create) with `event_types: ["guest.updated"]`):
+
+```bash
+# Public URL must reach your running webhook server (tunnel or real host)
+LUMA_API_KEY=your_key bun run luma:register-webhook https://your-host/luma/check-in
+```
+
+The command prints `LUMA_WEBHOOK_SECRET=whsec_...` — set that on the server that runs `luma:webhook`. List existing webhooks:
+
+```bash
+LUMA_API_KEY=your_key bun run luma:register-webhook list
+```
+
+Alternatively, you can create the same webhook manually in Luma: **Settings → Developer → Webhooks**, action **Guest Updated** only.
+
 ### Webhook server env
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `LUMA_API_KEY` | Yes | `x-luma-api-key` for API calls |
-| `LUMA_WEBHOOK_SECRET` | Yes | `whsec_...` secret from Luma webhook settings |
+| `LUMA_API_KEY` | Yes | `x-luma-api-key` for API calls (webhook handler + optional registration) |
+| `LUMA_WEBHOOK_SECRET` | Yes | `whsec_...` from `luma:register-webhook` output or Luma dashboard |
 | `LUMA_DATA_PATH` | No | Same role as `CAFE_DATA_PATH` (defaults to cwd) |
 | `LUMA_WEBHOOK_PORT` | No | Listen port (default `3847`) |
 | `RESEND_API_KEY`, `RESEND_FROM_EMAIL` | For email | Same as CLI |
@@ -86,8 +105,6 @@ bun run luma:webhook
 ```
 
 Expose a URL publicly (for example via a tunnel). Recommended path: **`http://your-host:<port>/luma/check-in`**. The same server also accepts **`/luma/webhook`**, **`/luma/webhook/check-in`**, and **`/`** for backwards compatibility.
-
-In Luma: **Settings → Developer → Webhooks**, create a webhook with action **Guest Updated** only (not “all actions”, unless you accept extra traffic that this server will ignore after the `type` check).
 
 ## Usage
 
@@ -137,7 +154,8 @@ cafe-cursor-cli/
 ├── src/
 │   ├── cli.tsx                 # Main CLI entry point
 │   ├── lumaWebhookServer.ts    # Luma guest.updated webhook HTTP server
-│   ├── luma/                   # Luma API client and signature verification
+│   ├── registerLumaCheckInWebhook.ts  # CLI: POST /v1/webhooks/create
+│   ├── luma/                   # Luma API client, webhooks admin, signatures
 │   ├── services/               # Shared send-credit logic (CLI + webhook)
 │   ├── screens/                # CLI screens
 │   ├── components/             # Reusable components
