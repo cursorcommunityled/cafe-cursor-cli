@@ -16,7 +16,7 @@ interface CheckResult {
 }
 
 const CheckRedemptions = ({ onBack }: CheckRedemptionsProps) => {
-  const { isLocal } = useStorage();
+  const { dataPath } = useStorage();
   const { data: sentCredits, refresh } = useSentCredits();
   const markRedeemed = useMarkRedeemed();
 
@@ -72,7 +72,7 @@ const CheckRedemptions = ({ onBack }: CheckRedemptionsProps) => {
         let status: "redeemed" | "active" | "unknown";
         if (result.redeemed) {
           status = "redeemed";
-          // Update database
+          // Persist redeemed status to local CSV
           await markRedeemed(credit.id);
         } else if (result.available) {
           status = "active";
@@ -142,12 +142,10 @@ const CheckRedemptions = ({ onBack }: CheckRedemptionsProps) => {
   return (
     <Box flexDirection="column" padding={1}>
       {/* Mode indicator */}
-      {isLocal && (
-        <Box marginBottom={1}>
-          <Text color="green">[LOCAL MODE]</Text>
-          <Text dimColor> - Changes saved to CSV files</Text>
-        </Box>
-      )}
+      <Box marginBottom={1}>
+        <Text dimColor>Data: </Text>
+        <Text color="green">{dataPath}</Text>
+      </Box>
 
       {/* Header */}
       <Box marginBottom={1}>

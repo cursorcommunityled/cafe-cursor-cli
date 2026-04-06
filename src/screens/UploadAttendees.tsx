@@ -21,7 +21,7 @@ interface ImportResult {
 }
 
 const UploadAttendees = ({ onBack }: UploadAttendeesProps) => {
-  const { isLocal } = useStorage();
+  const { dataPath } = useStorage();
   const [stage, setStage] = useState<Stage>("input");
   const [filepath, setFilepath] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -137,9 +137,6 @@ const UploadAttendees = ({ onBack }: UploadAttendeesProps) => {
           <Text color="white" bold>
             Upload Attendees
           </Text>
-          {isLocal && (
-            <Text color="green"> [LOCAL MODE]</Text>
-          )}
         </Box>
 
         <Box flexDirection="column" marginBottom={1}>
@@ -154,12 +151,12 @@ const UploadAttendees = ({ onBack }: UploadAttendeesProps) => {
           <Text dimColor>  - What are you working on?</Text>
         </Box>
 
-        {isLocal && (
-          <Box marginBottom={1}>
-            <Text dimColor>Attendees will be saved to: </Text>
-            <Text color="green">cafe_people.csv</Text>
-          </Box>
-        )}
+        <Box marginBottom={1}>
+          <Text dimColor>Attendees will be saved under: </Text>
+          <Text color="green">{dataPath}</Text>
+          <Text dimColor> as </Text>
+          <Text color="green">cafe_people.csv</Text>
+        </Box>
 
         <Box borderStyle="round" borderColor="white" paddingX={1} flexDirection="column">
           <Box>
@@ -203,7 +200,6 @@ const UploadAttendees = ({ onBack }: UploadAttendeesProps) => {
           <Text color="white" bold>
             Importing Attendees
           </Text>
-          {isLocal && <Text color="green"> [LOCAL]</Text>}
         </Box>
 
         <Box marginBottom={1}>
@@ -215,7 +211,7 @@ const UploadAttendees = ({ onBack }: UploadAttendeesProps) => {
 
         <Box marginTop={1}>
           <Text dimColor>
-            {isLocal ? "Saving to CSV file..." : "Importing attendees to database..."}
+            Saving to cafe_people.csv...
           </Text>
         </Box>
       </Box>
@@ -229,7 +225,6 @@ const UploadAttendees = ({ onBack }: UploadAttendeesProps) => {
         <Text color="green" bold>
           Import Complete
         </Text>
-        {isLocal && <Text color="green"> [LOCAL]</Text>}
       </Box>
 
       <Box flexDirection="column" marginBottom={1}>
@@ -247,10 +242,10 @@ const UploadAttendees = ({ onBack }: UploadAttendeesProps) => {
         </Text>
       </Box>
 
-      {isLocal && result.imported > 0 && (
+      {result.imported > 0 && (
         <Box marginBottom={1}>
-          <Text dimColor>Saved to: </Text>
-          <Text color="green">cafe_people.csv</Text>
+          <Text dimColor>Saved under: </Text>
+          <Text color="green">{dataPath}</Text>
         </Box>
       )}
 

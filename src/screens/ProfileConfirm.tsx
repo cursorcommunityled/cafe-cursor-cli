@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Box, Text, useInput } from "ink";
 import { exec } from "child_process";
+import type { CreditDelivery } from "../services/sendCursorCreditEmail.js";
 
 const openUrl = (url: string) => {
   let command;
@@ -42,7 +43,9 @@ interface ProfileConfirmProps {
   isSending?: boolean;
   sendError?: string | null;
   sendSuccess?: boolean;
-  isLocal?: boolean;
+  /** When Resend is configured, credits are emailed; otherwise only assigned in CSV. */
+  sendsEmail?: boolean;
+  delivery?: CreditDelivery | null;
 }
 
 const ProfileConfirm = ({
@@ -52,7 +55,8 @@ const ProfileConfirm = ({
   isSending = false,
   sendError = null,
   sendSuccess = false,
-  isLocal = false,
+  sendsEmail = true,
+  delivery = null,
 }: ProfileConfirmProps) => {
   const [selected, setSelected] = useState<"yes" | "no">("yes");
 
@@ -93,19 +97,25 @@ const ProfileConfirm = ({
 
   // Show success screen
   if (sendSuccess) {
+    const emailed = delivery === "email" || (delivery == null && sendsEmail);
     return (
       <Box flexDirection="column" padding={1}>
         <Box marginBottom={1}>
           <Text bold color="green">
-            {isLocal ? "Credit Assigned Successfully!" : "Email Sent Successfully!"}
+            {emailed ? "Email Sent Successfully!" : "Credit Assigned Successfully!"}
           </Text>
         </Box>
         <Box flexDirection="column" borderStyle="round" borderColor="green" padding={1}>
-          <Text>{isLocal ? "Credit has been assigned to:" : "Credits have been sent to:"}</Text>
+          <Text>
+            {emailed ? "Credits have been sent to:" : "Credit has been assigned to:"}
+          </Text>
           <Text bold color="gray">{contact.email}</Text>
-          {isLocal && (
-            <Text dimColor>(Saved to cafe_credits.csv and cafe_people.csv)</Text>
+          {!emailed && (
+            <Text dimColor>
+              Set RESEND_API_KEY and RESEND_FROM_EMAIL to email codes automatically.
+            </Text>
           )}
+          <Text dimColor>(Saved to cafe_credits.csv and cafe_people.csv)</Text>
         </Box>
         <Box marginTop={1}>
           <Text dimColor>Press any key to continue...</Text>
@@ -137,15 +147,14 @@ const ProfileConfirm = ({
       <Box flexDirection="column" padding={1}>
         <Box marginBottom={1}>
           <Text bold color="yellow">
-            {isLocal ? "Assigning Credit..." : "Sending Credits..."}
+            {sendsEmail ? "Sending Credits..." : "Assigning Credit..."}
           </Text>
         </Box>
         <Box flexDirection="column" borderStyle="round" borderColor="yellow" padding={1}>
           <Text>
-            {isLocal 
-              ? `Assigning credit to ${contact.email}` 
-              : `Sending email to ${contact.email}`
-            }
+            {sendsEmail
+              ? `Sending email to ${contact.email}`
+              : `Assigning credit to ${contact.email}`}
           </Text>
           <Text dimColor>Please wait...</Text>
         </Box>
@@ -206,14 +215,11 @@ const ProfileConfirm = ({
 
       <Box marginTop={1}>
         <Text bold>
-          {isLocal 
-            ? `Assign Credit to ${fullName}?` 
-            : `Send Cursor Credits to ${fullName}?`
-          }
+          {sendsEmail
+            ? `Send Cursor Credits to ${fullName}?`
+            : `Assign Credit to ${fullName}?`}
         </Text>
-        {isLocal && (
-          <Text dimColor> (no email will be sent)</Text>
-        )}
+        {!sendsEmail && <Text dimColor> (no email will be sent)</Text>}
       </Box>
 
       <Box marginTop={1} gap={2}>

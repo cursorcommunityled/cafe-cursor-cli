@@ -10,21 +10,49 @@
 # Cafe Cursor CLI 
 [![CI](https://github.com/Alhwyn/cafe-cursor-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/Alhwyn/cafe-cursor-cli/actions/workflows/ci.yml)
 
-A CLI tool for managing and sending Cursor credits to event attendees via email.
+**Storage is local only** – attendees, credits, and Luma dedupe state live in CSV/text files under `CAFE_DATA_PATH` (or the process working directory). There is no cloud database or sync layer in this app.
+
+Two pieces work together:
+
+1. **Interactive CLI** – manage attendees and Cursor credit codes in those local files; send credits manually (optional [Resend](https://resend.com) email).
+2. **Luma API integration** – a small HTTP service that talks to [Luma’s public API](https://docs.luma.com/reference/getting-started-with-your-api) so **check-in on Luma** can trigger an automatic credit (again via Resend when configured). That service still reads and writes the same local files.
+
+Event attendees never use the Luma API or this repo; operators hold the Luma API key and run the services.
+
+## Luma API integration (overview)
+
+| What | Luma API usage |
+|------|----------------|
+| **Auth** | Send header `x-luma-api-key: <your key>` on every request ([getting started](https://docs.luma.com/reference/getting-started-with-your-api)). Requires [Luma Plus](https://luma.com/pricing). |
+| **Base URL** | `https://public-api.luma.com` |
+| **Register webhook** | `POST /v1/webhooks/create` with `event_types: ["guest.updated"]` – scripted as `bun run luma:register-webhook` ([create webhook](https://docs.luma.com/reference/post_v1-webhooks-create)). |
+| **List webhooks** | `GET /v1/webhooks/list` – `bun run luma:register-webhook list`. |
+| **Verify check-in** | After Luma POSTs to your server, this app calls `GET /v1/event/get-guest` and requires per-ticket `checked_in_at` before sending a code ([get guest](https://docs.luma.com/reference/get_v1-event-get-guest)). |
+| **Inbound webhooks** | Luma delivers `guest.updated` when guest data changes including check-in ([webhooks overview](https://help.lu.ma/p/webhooks)). There is no separate `guest.checked_in` event type; we filter on `type === "guest.updated"` and confirm check-in via the API. |
+
+Flow:
+
+1. Operator registers a public URL with Luma (API or dashboard).
+2. Guest checks in on Luma.
+3. Luma sends a signed `guest.updated` payload to your server.
+4. Server verifies [HMAC signature](https://help.lu.ma/p/webhooks), calls `get-guest`, then assigns/sends one Cursor credit per event+guest (deduped in `cafe_luma_sent_guests.txt`).
+
+OpenAPI spec (for exploring all endpoints): `https://public-api.luma.com/openapi.json`
 
 ## Features
 
+- **Local-first data** – `cafe_people.csv`, `cafe_credits.csv`, `cafe_luma_sent_guests.txt` (no hosted backend)
 - Upload and manage attendee lists from CSV
 - Upload and track Cursor credit codes
-- Send personalized emails with credit codes using Resend
+- Send personalized emails with credit codes using Resend (when configured)
 - Track credit status (available, assigned, sent, redeemed)
-- **Local Mode**: Run without a database using CSV files for storage
+- **Luma + API**: register webhooks and verify check-in through the official Luma API
 
 ## Prerequisites
 
 - [Bun](https://bun.sh) (v1.0 or later)
-- [Convex](https://convex.dev) account (optional, only for Cloud Mode)
-- [Resend](https://resend.com) account with verified domain (optional, only for Cloud Mode)
+- [Resend](https://resend.com) with a verified domain (optional, for sending credit emails)
+- [Luma Plus](https://luma.com/pricing) and a Luma API key (for the check-in automation service)
 
 ## Setup
 
@@ -41,78 +69,68 @@ cd cafe-cursor-cli
 bun install
 ```
 
-### 3. Run the CLI
+### 3. Run the CLI (local CSV + optional Resend)
 
 ```bash
 bun run cli
 ```
 
-That's it for **Local Mode**! The CLI will use CSV files for storage and no external services are required.
+By default, data files live in the current working directory: `cafe_people.csv`, `cafe_credits.csv`. For the Luma webhook process, set **`CAFE_DATA_PATH`** (or **`LUMA_DATA_PATH`** on the webhook server) so the CLI and the webhook automation use the **same** local folder.
 
----
+### Environment variables (CLI)
 
-### Optional: Set up Convex (Cloud Mode)
+| Variable | Purpose |
+|----------|---------|
+| `CAFE_DATA_PATH` | Directory for `cafe_people.csv`, `cafe_credits.csv`, and (if used) `cafe_luma_sent_guests.txt` |
+| `RESEND_API_KEY` | Send credit emails via Resend |
+| `RESEND_FROM_EMAIL` | Verified sender address for Resend |
 
-If you want to use Cloud Mode with database sync and email sending, follow these additional steps:
+Without Resend, credits are still assigned in CSV; no email is sent.
 
-#### 3a. Set up Convex
+## Luma API: operator setup (check-in automation)
+
+### 1. Start the webhook HTTP server
 
 ```bash
-# Login to Convex
-bunx convex login
-
-# Initialize Convex (creates a new project)
-bunx convex dev
+bun run luma:webhook
 ```
 
-This will create a new Convex project and start syncing your schema.
+Expose it on the public internet (HTTPS in production). Recommended path: **`https://your-host/luma/check-in`** (also accepts `/luma/webhook`, `/luma/webhook/check-in`, `/`).
 
-#### 3b. Configure environment variables
+### 2. Register the webhook using the Luma API
 
-Create a `.env` file in the root directory:
-
-```env
-CONVEX_URL=https://your-deployment.convex.cloud
-RESEND_API_KEY=re_xxxxxxxxxxxxx
-RESEND_FROM_EMAIL=credits@yourdomain.com
+```bash
+LUMA_API_KEY=your_key bun run luma:register-webhook https://your-host/luma/check-in
 ```
 
-You can find your `CONVEX_URL` in the Convex dashboard after running `bunx convex dev`.
+This calls **`POST /v1/webhooks/create`** with `guest.updated` only. Copy the printed **`LUMA_WEBHOOK_SECRET=whsec_...`** into the environment of the machine running `luma:webhook`.
 
-#### 3c. Set up Convex environment variables
+List webhooks already on your calendar:
 
-Go to your [Convex Dashboard](https://dashboard.convex.dev):
-1. Select your project
-2. Go to **Settings** > **Environment Variables**
-3. Add:
-   - `RESEND_API_KEY` - Your Resend API key
-   - `RESEND_FROM_EMAIL` - Your verified sender email
+```bash
+LUMA_API_KEY=your_key bun run luma:register-webhook list
+```
 
-## Usage
+You can instead create the same webhook in Luma: **Settings → Developer → Webhooks** → **Guest Updated**.
 
-### Storage Modes
+### Webhook server environment
 
-When you start the CLI, you'll be prompted to select a storage mode:
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `LUMA_API_KEY` | Yes | Same key as `x-luma-api-key` for outbound `get-guest` calls |
+| `LUMA_WEBHOOK_SECRET` | Yes | `whsec_...` from registration response or Luma UI |
+| `LUMA_DATA_PATH` | No | Data directory (defaults to cwd); align with `CAFE_DATA_PATH` for shared CSVs |
+| `LUMA_WEBHOOK_PORT` | No | Listen port (default `3847`) |
+| `RESEND_API_KEY`, `RESEND_FROM_EMAIL` | For email | Same as CLI |
 
-1. **Cloud Mode (Convex Database)**
-   - Uses Convex database for storage
-   - Requires environment variables (CONVEX_URL, RESEND_API_KEY, RESEND_FROM_EMAIL)
-   - Data synced across devices
-   - Sends actual emails via Resend
+## Usage (CLI menu)
 
-2. **Local Mode (CSV Files)**
-   - Uses CSV files in the current directory for storage
-   - No database setup required
-   - Files created: `cafe_people.csv`, `cafe_credits.csv`
-   - Credits are assigned but no emails are sent
+1. **Send Cursor Credits** – Browse attendees and send or assign credits
+2. **Upload Cursor Credits** – Import credit codes from a CSV file
+3. **Upload Attendees** – Import attendees from a CSV file
+4. **Check Credit Redemptions** – Check sent codes against Cursor
 
-### Main Menu Options
-
-1. **Send Cursor Credits** - Browse attendees and send credits via email
-2. **Upload Cursor Credits** - Import credit codes from a CSV file
-3. **Upload Attendees** - Import attendees from a CSV file
-
-### CSV Formats
+### CSV formats
 
 #### Attendees CSV
 
@@ -144,29 +162,24 @@ bun test
 bun run build
 ```
 
-### Start Convex dev server (optional, for Cloud Mode)
-
-```bash
-bunx convex dev
-```
-
-## Project Structure
+## Project structure
 
 ```
 cafe-cursor-cli/
-├── convex/              # Convex backend (optional, for Cloud Mode)
-│   ├── schema.ts        # Database schema
-│   ├── credits.ts       # Credit mutations/queries
-│   ├── people.ts        # People mutations/queries
-│   ├── email.ts         # Email sending action
-│   └── emailHelpers.ts  # Email helper mutations
 ├── src/
-│   ├── cli.tsx          # Main CLI entry point
-│   ├── screens/         # CLI screens
-│   ├── components/      # Reusable components (includes ModeSelector)
-│   ├── context/         # React contexts (StorageContext for mode)
-│   ├── hooks/           # Custom hooks (storage abstraction)
-│   ├── emails/          # Email templates
-│   └── utils/           # Utility functions (includes localStorage)
-└── test/                # Test files
+│   ├── cli.tsx                        # Interactive CLI (local CSV + optional Resend)
+│   ├── lumaWebhookServer.ts           # HTTP receiver + Luma signature verify + get-guest
+│   ├── registerLumaCheckInWebhook.ts  # Operator CLI → POST /v1/webhooks/create
+│   ├── luma/
+│   │   ├── lumaClient.ts              # GET /v1/event/get-guest
+│   │   ├── webhooksAdmin.ts           # POST create / GET list webhooks
+│   │   └── verifyWebhookSignature.ts  # Inbound HMAC verification
+│   ├── services/                      # Shared send-credit logic (CLI + webhook)
+│   ├── screens/
+│   ├── components/
+│   ├── context/
+│   ├── hooks/
+│   ├── emails/
+│   └── utils/
+└── test/
 ```

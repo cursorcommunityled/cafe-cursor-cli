@@ -6,13 +6,14 @@ import ProfileConfirm, { type Contact } from "../screens/ProfileConfirm.js";
 import { ProgressBar } from "../components/ProgressBar.js";
 import { useStorage } from "../context/StorageContext.js";
 import { usePeopleList, useCreditTally, useSendCredits } from "../hooks/useStorageHooks.js";
+import type { CreditDelivery } from "../services/sendCursorCreditEmail.js";
 
 interface SendCreditsProps {
   onBack: () => void;
 }
 
 const SendCredits = ({ onBack }: SendCreditsProps) => {
-  const { isLocal } = useStorage();
+  const { dataPath } = useStorage();
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
@@ -23,6 +24,11 @@ const SendCredits = ({ onBack }: SendCreditsProps) => {
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [sendSuccess, setSendSuccess] = useState(false);
+  const [lastDelivery, setLastDelivery] = useState<CreditDelivery | null>(null);
+
+  const sendsEmail = Boolean(
+    process.env.RESEND_API_KEY && process.env.RESEND_FROM_EMAIL
+  );
 
   // Use custom hooks for data
   const { data: people, refresh: refreshPeople } = usePeopleList();
@@ -42,7 +48,7 @@ const SendCredits = ({ onBack }: SendCreditsProps) => {
     onBack();
   };
 
-  // Transform database people to Contact format
+  // Map stored people to contact rows for the table
   const contacts: Contact[] = useMemo(() => {
     if (!people) return [];
     return people.map((person) => ({
@@ -110,6 +116,7 @@ const SendCredits = ({ onBack }: SendCreditsProps) => {
     setIsSending(false);
     setSendError(null);
     setSendSuccess(false);
+    setLastDelivery(null);
   };
 
   const handleConfirmSend = async () => {
@@ -118,12 +125,14 @@ const SendCredits = ({ onBack }: SendCreditsProps) => {
     setIsSending(true);
     setSendError(null);
     setSendSuccess(false);
+    setLastDelivery(null);
 
     const result = await sendCredits(selectedContact.id);
 
     setIsSending(false);
 
     if (result.success) {
+      setLastDelivery(result.delivery ?? null);
       setSendSuccess(true);
       // Refresh data after successful send
       refreshPeople();
@@ -138,6 +147,7 @@ const SendCredits = ({ onBack }: SendCreditsProps) => {
     setIsSending(false);
     setSendError(null);
     setSendSuccess(false);
+    setLastDelivery(null);
     // Refresh data when closing modal
     refreshPeople();
     refreshCredits();
@@ -162,20 +172,18 @@ const SendCredits = ({ onBack }: SendCreditsProps) => {
         isSending={isSending}
         sendError={sendError}
         sendSuccess={sendSuccess}
-        isLocal={isLocal}
+        sendsEmail={sendsEmail}
+        delivery={lastDelivery}
       />
     );
   }
 
   return (
     <Box flexDirection="column" padding={1}>
-      {/* Mode indicator */}
-      {isLocal && (
-        <Box marginBottom={1}>
-          <Text color="green">[LOCAL MODE]</Text>
-          <Text dimColor> - Changes saved to CSV files</Text>
-        </Box>
-      )}
+      <Box marginBottom={1}>
+        <Text dimColor>Data: </Text>
+        <Text color="green">{dataPath}</Text>
+      </Box>
 
       {/* Credits Progress Bar */}
       <Box marginBottom={1} flexDirection="column">

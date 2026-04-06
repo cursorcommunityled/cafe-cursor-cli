@@ -21,7 +21,7 @@ interface CheckResult {
 }
 
 const UploadCredits = ({ onBack }: UploadCreditsProps) => {
-  const { isLocal } = useStorage();
+  const { dataPath } = useStorage();
   const [stage, setStage] = useState<Stage>("input");
   const [filepath, setFilepath] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -153,9 +153,6 @@ const UploadCredits = ({ onBack }: UploadCreditsProps) => {
       <Box flexDirection="column" padding={1}>
         <Box marginBottom={1}>
           <Text bold color="white">Upload Cursor Credits</Text>
-          {isLocal && (
-            <Text color="green"> [LOCAL MODE]</Text>
-          )}
         </Box>
         {error && (
           <Box marginTop={1}>
@@ -170,12 +167,12 @@ const UploadCredits = ({ onBack }: UploadCreditsProps) => {
           </Box>
         </Box>
 
-        {isLocal && (
-          <Box marginTop={1}>
-            <Text dimColor>Credits will be saved to: </Text>
-            <Text color="green">cafe_credits.csv</Text>
-          </Box>
-        )}
+        <Box marginTop={1}>
+          <Text dimColor>Credits will be saved under: </Text>
+          <Text color="green">{dataPath}</Text>
+          <Text dimColor> as </Text>
+          <Text color="green">cafe_credits.csv</Text>
+        </Box>
         
         <Box borderStyle="round" borderColor="white" paddingX={1} flexDirection="column">
           <Box>
@@ -209,7 +206,6 @@ const UploadCredits = ({ onBack }: UploadCreditsProps) => {
       <Box flexDirection="column" padding={1}>
         <Box marginBottom={1}>
           <Text bold color="white">Checking Credits...</Text>
-          {isLocal && <Text color="green"> [LOCAL]</Text>}
         </Box>
         <ProgressBar current={progress.current} total={progress.total} />
         <Box marginTop={1}>
@@ -229,18 +225,17 @@ const UploadCredits = ({ onBack }: UploadCreditsProps) => {
     <Box flexDirection="column" padding={1}>
       <Box marginBottom={1}>
         <Text bold color="white">Results</Text>
-        {isLocal && <Text color="green"> [LOCAL MODE]</Text>}
       </Box>
       <Box marginBottom={1} flexDirection="column">
         <Text bold color="green">Available Codes: {availableUrls.length}</Text>
         <Text bold color="yellow">Total New Credits: ${totalCredits}</Text>
-        <Text bold color="white">Saved {isLocal ? "to CSV" : "to Database"}: {savedCount}</Text>
+        <Text bold color="white">Saved to CSV: {savedCount}</Text>
         <Text bold color="gray">Skipped (already exists): {skippedCount}</Text>
       </Box>
-      {isLocal && savedCount > 0 && (
+      {savedCount > 0 && (
         <Box marginBottom={1}>
-          <Text dimColor>Credits saved to: </Text>
-          <Text color="green">cafe_credits.csv</Text>
+          <Text dimColor>Credits saved under: </Text>
+          <Text color="green">{dataPath}</Text>
         </Box>
       )}
       <Box marginTop={1}>
