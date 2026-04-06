@@ -48,7 +48,7 @@ const SendCredits = ({ onBack }: SendCreditsProps) => {
     onBack();
   };
 
-  // Transform database people to Contact format
+  // Map stored people to contact rows for the table
   const contacts: Contact[] = useMemo(() => {
     if (!people) return [];
     return people.map((person) => ({

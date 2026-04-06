@@ -10,10 +10,12 @@
 # Cafe Cursor CLI 
 [![CI](https://github.com/Alhwyn/cafe-cursor-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/Alhwyn/cafe-cursor-cli/actions/workflows/ci.yml)
 
+**Storage is local only** – attendees, credits, and Luma dedupe state live in CSV/text files under `CAFE_DATA_PATH` (or the process working directory). There is no cloud database or sync layer in this app.
+
 Two pieces work together:
 
-1. **Interactive CLI** – manage attendees and Cursor credit codes in CSV files, send credits manually (optional [Resend](https://resend.com) email).
-2. **Luma API integration** – a small HTTP service that talks to [Luma’s public API](https://docs.luma.com/reference/getting-started-with-your-api) so **check-in on Luma** can trigger an automatic credit (again via Resend when configured).
+1. **Interactive CLI** – manage attendees and Cursor credit codes in those local files; send credits manually (optional [Resend](https://resend.com) email).
+2. **Luma API integration** – a small HTTP service that talks to [Luma’s public API](https://docs.luma.com/reference/getting-started-with-your-api) so **check-in on Luma** can trigger an automatic credit (again via Resend when configured). That service still reads and writes the same local files.
 
 Event attendees never use the Luma API or this repo; operators hold the Luma API key and run the services.
 
@@ -39,6 +41,7 @@ OpenAPI spec (for exploring all endpoints): `https://public-api.luma.com/openapi
 
 ## Features
 
+- **Local-first data** – `cafe_people.csv`, `cafe_credits.csv`, `cafe_luma_sent_guests.txt` (no hosted backend)
 - Upload and manage attendee lists from CSV
 - Upload and track Cursor credit codes
 - Send personalized emails with credit codes using Resend (when configured)
@@ -66,13 +69,13 @@ cd cafe-cursor-cli
 bun install
 ```
 
-### 3. Run the CLI (CSV + optional Resend)
+### 3. Run the CLI (local CSV + optional Resend)
 
 ```bash
 bun run cli
 ```
 
-By default, data files live in the current working directory: `cafe_people.csv`, `cafe_credits.csv`. For the Luma webhook process, set **`CAFE_DATA_PATH`** (or **`LUMA_DATA_PATH`** on the webhook server) so both the CLI and automation read/write the same folder.
+By default, data files live in the current working directory: `cafe_people.csv`, `cafe_credits.csv`. For the Luma webhook process, set **`CAFE_DATA_PATH`** (or **`LUMA_DATA_PATH`** on the webhook server) so the CLI and the webhook automation use the **same** local folder.
 
 ### Environment variables (CLI)
 
@@ -164,7 +167,7 @@ bun run build
 ```
 cafe-cursor-cli/
 ├── src/
-│   ├── cli.tsx                        # Interactive CLI (CSV + Resend)
+│   ├── cli.tsx                        # Interactive CLI (local CSV + optional Resend)
 │   ├── lumaWebhookServer.ts           # HTTP receiver + Luma signature verify + get-guest
 │   ├── registerLumaCheckInWebhook.ts  # Operator CLI → POST /v1/webhooks/create
 │   ├── luma/

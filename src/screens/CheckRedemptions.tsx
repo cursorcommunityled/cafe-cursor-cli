@@ -72,7 +72,7 @@ const CheckRedemptions = ({ onBack }: CheckRedemptionsProps) => {
         let status: "redeemed" | "active" | "unknown";
         if (result.redeemed) {
           status = "redeemed";
-          // Update database
+          // Persist redeemed status to local CSV
           await markRedeemed(credit.id);
         } else if (result.available) {
           status = "active";
