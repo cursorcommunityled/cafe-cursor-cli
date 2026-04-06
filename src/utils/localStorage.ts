@@ -5,6 +5,7 @@ import Papa from "papaparse";
 // File names for local storage
 const PEOPLE_FILE = "cafe_people.csv";
 const CREDITS_FILE = "cafe_credits.csv";
+const LUMA_SENT_FILE = "cafe_luma_sent_guests.txt";
 
 export interface LocalPerson {
   id: string;
@@ -255,4 +256,41 @@ export const markCreditRedeemed = (creditId: string, basePath?: string): boolean
   saveCredits(credits, basePath);
   
   return true;
+};
+
+// --- Luma webhook dedupe (one credit email per event + guest) ---
+
+const lumaSentKey = (eventId: string, guestId: string) =>
+  `${eventId.trim()}\t${guestId.trim()}`;
+
+export const loadLumaSentGuestKeys = (basePath?: string): Set<string> => {
+  const filepath = getFilePath(LUMA_SENT_FILE, basePath);
+  if (!existsSync(filepath)) {
+    return new Set();
+  }
+  const content = readFileSync(filepath, "utf-8");
+  const keys = new Set<string>();
+  for (const line of content.split(/\r?\n/)) {
+    const t = line.trim();
+    if (t) keys.add(t);
+  }
+  return keys;
+};
+
+export const markLumaGuestCredited = (
+  eventId: string,
+  guestId: string,
+  basePath?: string
+): void => {
+  const filepath = getFilePath(LUMA_SENT_FILE, basePath);
+  const key = `${lumaSentKey(eventId, guestId)}\n`;
+  writeFileSync(filepath, key, { flag: "a" });
+};
+
+export const hasLumaGuestBeenCredited = (
+  eventId: string,
+  guestId: string,
+  basePath?: string
+): boolean => {
+  return loadLumaSentGuestKeys(basePath).has(lumaSentKey(eventId, guestId));
 };

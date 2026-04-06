@@ -10,21 +10,21 @@
 # Cafe Cursor CLI 
 [![CI](https://github.com/Alhwyn/cafe-cursor-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/Alhwyn/cafe-cursor-cli/actions/workflows/ci.yml)
 
-A CLI tool for managing and sending Cursor credits to event attendees via email.
+A CLI tool for managing and sending Cursor credits to event attendees. Data lives in CSV files on disk. Optional [Resend](https://resend.com) sends the credit email; optional [Luma](https://docs.luma.com/reference/getting-started-with-your-api) webhooks automate sending when a guest checks in.
 
 ## Features
 
 - Upload and manage attendee lists from CSV
 - Upload and track Cursor credit codes
-- Send personalized emails with credit codes using Resend
+- Send personalized emails with credit codes using Resend (when configured)
 - Track credit status (available, assigned, sent, redeemed)
-- **Local Mode**: Run without a database using CSV files for storage
+- **Luma check-in automation**: webhook server verifies check-in via the Luma API and sends a credit email
 
 ## Prerequisites
 
 - [Bun](https://bun.sh) (v1.0 or later)
-- [Convex](https://convex.dev) account (optional, only for Cloud Mode)
-- [Resend](https://resend.com) account with verified domain (optional, only for Cloud Mode)
+- [Resend](https://resend.com) account with verified domain (optional, for email delivery)
+- [Luma Plus](https://luma.com/pricing) and a Luma API key (optional, for webhook automation)
 
 ## Setup
 
@@ -47,72 +47,54 @@ bun install
 bun run cli
 ```
 
-That's it for **Local Mode**! The CLI will use CSV files for storage and no external services are required.
+By default, attendee and credit data is stored as `cafe_people.csv` and `cafe_credits.csv` in the current working directory. Set `CAFE_DATA_PATH` to use a fixed directory (recommended for the Luma webhook server).
 
----
+### Environment variables
 
-### Optional: Set up Convex (Cloud Mode)
+| Variable | Purpose |
+|----------|---------|
+| `CAFE_DATA_PATH` | Directory for `cafe_people.csv`, `cafe_credits.csv`, and `cafe_luma_sent_guests.txt` |
+| `RESEND_API_KEY` | Send credit emails via Resend |
+| `RESEND_FROM_EMAIL` | Verified sender address for Resend |
 
-If you want to use Cloud Mode with database sync and email sending, follow these additional steps:
+If Resend is not configured, the CLI and webhook still assign credits in CSV only (no outbound email).
 
-#### 3a. Set up Convex
+## Luma check-in webhook
+
+When a guest checks in on Luma, Luma can call your server with a `guest.updated` webhook. This repo includes a small HTTP server that:
+
+1. Verifies the [Luma webhook signature](https://help.lu.ma/p/webhooks)
+2. Confirms the guest is checked in using `GET /v1/event/get-guest` ([Luma API](https://docs.luma.com/reference/getting-started-with-your-api))
+3. Sends one Cursor credit email per event + guest (deduped via `cafe_luma_sent_guests.txt`)
+
+### Webhook server env
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `LUMA_API_KEY` | Yes | `x-luma-api-key` for API calls |
+| `LUMA_WEBHOOK_SECRET` | Yes | `whsec_...` secret from Luma webhook settings |
+| `LUMA_DATA_PATH` | No | Same role as `CAFE_DATA_PATH` (defaults to cwd) |
+| `LUMA_WEBHOOK_PORT` | No | Listen port (default `3847`) |
+| `RESEND_API_KEY`, `RESEND_FROM_EMAIL` | For email | Same as CLI |
+
+### Run the webhook server
 
 ```bash
-# Login to Convex
-bunx convex login
-
-# Initialize Convex (creates a new project)
-bunx convex dev
+bun run luma:webhook
 ```
 
-This will create a new Convex project and start syncing your schema.
-
-#### 3b. Configure environment variables
-
-Create a `.env` file in the root directory:
-
-```env
-CONVEX_URL=https://your-deployment.convex.cloud
-RESEND_API_KEY=re_xxxxxxxxxxxxx
-RESEND_FROM_EMAIL=credits@yourdomain.com
-```
-
-You can find your `CONVEX_URL` in the Convex dashboard after running `bunx convex dev`.
-
-#### 3c. Set up Convex environment variables
-
-Go to your [Convex Dashboard](https://dashboard.convex.dev):
-1. Select your project
-2. Go to **Settings** > **Environment Variables**
-3. Add:
-   - `RESEND_API_KEY` - Your Resend API key
-   - `RESEND_FROM_EMAIL` - Your verified sender email
+Expose `http://your-host:<port>/luma/webhook` publicly (for example via a tunnel), then in Luma: **Settings → Developer → Webhooks**, create a webhook with event type **Guest Updated** pointing at that URL.
 
 ## Usage
 
-### Storage Modes
+### Main menu
 
-When you start the CLI, you'll be prompted to select a storage mode:
-
-1. **Cloud Mode (Convex Database)**
-   - Uses Convex database for storage
-   - Requires environment variables (CONVEX_URL, RESEND_API_KEY, RESEND_FROM_EMAIL)
-   - Data synced across devices
-   - Sends actual emails via Resend
-
-2. **Local Mode (CSV Files)**
-   - Uses CSV files in the current directory for storage
-   - No database setup required
-   - Files created: `cafe_people.csv`, `cafe_credits.csv`
-   - Credits are assigned but no emails are sent
-
-### Main Menu Options
-
-1. **Send Cursor Credits** - Browse attendees and send credits via email
+1. **Send Cursor Credits** - Browse attendees and send or assign credits
 2. **Upload Cursor Credits** - Import credit codes from a CSV file
 3. **Upload Attendees** - Import attendees from a CSV file
+4. **Check Credit Redemptions** - Check sent codes against Cursor
 
-### CSV Formats
+### CSV formats
 
 #### Attendees CSV
 
@@ -144,29 +126,20 @@ bun test
 bun run build
 ```
 
-### Start Convex dev server (optional, for Cloud Mode)
-
-```bash
-bunx convex dev
-```
-
-## Project Structure
+## Project structure
 
 ```
 cafe-cursor-cli/
-├── convex/              # Convex backend (optional, for Cloud Mode)
-│   ├── schema.ts        # Database schema
-│   ├── credits.ts       # Credit mutations/queries
-│   ├── people.ts        # People mutations/queries
-│   ├── email.ts         # Email sending action
-│   └── emailHelpers.ts  # Email helper mutations
 ├── src/
-│   ├── cli.tsx          # Main CLI entry point
-│   ├── screens/         # CLI screens
-│   ├── components/      # Reusable components (includes ModeSelector)
-│   ├── context/         # React contexts (StorageContext for mode)
-│   ├── hooks/           # Custom hooks (storage abstraction)
-│   ├── emails/          # Email templates
-│   └── utils/           # Utility functions (includes localStorage)
-└── test/                # Test files
+│   ├── cli.tsx                 # Main CLI entry point
+│   ├── lumaWebhookServer.ts    # Luma guest.updated webhook HTTP server
+│   ├── luma/                   # Luma API client and signature verification
+│   ├── services/               # Shared send-credit logic (CLI + webhook)
+│   ├── screens/                # CLI screens
+│   ├── components/             # Reusable components
+│   ├── context/                # Storage path context
+│   ├── hooks/                  # CSV-backed data hooks
+│   ├── emails/                 # Email templates
+│   └── utils/                  # CSV storage and helpers
+└── test/                       # Tests
 ```

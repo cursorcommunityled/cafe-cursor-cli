@@ -1,11 +1,6 @@
-import React, { createContext, useContext, useState, type ReactNode } from "react";
-
-export type StorageMode = "local" | "cloud";
+import React, { createContext, useContext, type ReactNode } from "react";
 
 interface StorageContextType {
-  mode: StorageMode;
-  setMode: (mode: StorageMode) => void;
-  isLocal: boolean;
   dataPath: string;
 }
 
@@ -16,18 +11,14 @@ interface StorageProviderProps {
 }
 
 export const StorageProvider = ({ children }: StorageProviderProps) => {
-  const [mode, setMode] = useState<StorageMode>("cloud");
-  
-  // Default local data path - can be customized
-  const dataPath = process.cwd();
+  const dataPath = process.env.CAFE_DATA_PATH || process.cwd();
 
   return (
-    <StorageContext.Provider value={{ 
-      mode, 
-      setMode, 
-      isLocal: mode === "local",
-      dataPath 
-    }}>
+    <StorageContext.Provider
+      value={{
+        dataPath,
+      }}
+    >
       {children}
     </StorageContext.Provider>
   );
