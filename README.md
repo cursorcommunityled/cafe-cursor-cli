@@ -61,10 +61,12 @@ If Resend is not configured, the CLI and webhook still assign credits in CSV onl
 
 ## Luma check-in webhook
 
-When a guest checks in on Luma, Luma can call your server with a `guest.updated` webhook. This repo includes a small HTTP server that:
+Luma does **not** list a separate webhook type only for check-in. Per [Luma’s webhooks help](https://help.lu.ma/p/webhooks), **Guest Updated** fires when check-in status (and other guest fields) change, with payload type `guest.updated`. This server listens **only** for `guest.updated` and still **re-checks** check-in via the API before sending a code, so profile-only updates do not trigger a credit.
+
+This repo includes a small HTTP server that:
 
 1. Verifies the [Luma webhook signature](https://help.lu.ma/p/webhooks)
-2. Confirms the guest is checked in using `GET /v1/event/get-guest` ([Luma API](https://docs.luma.com/reference/getting-started-with-your-api))
+2. Confirms the guest is checked in using `GET /v1/event/get-guest` ([Luma API](https://docs.luma.com/reference/getting-started-with-your-api)) (per-ticket `checked_in_at`)
 3. Sends one Cursor credit email per event + guest (deduped via `cafe_luma_sent_guests.txt`)
 
 ### Webhook server env
@@ -83,7 +85,9 @@ When a guest checks in on Luma, Luma can call your server with a `guest.updated`
 bun run luma:webhook
 ```
 
-Expose `http://your-host:<port>/luma/webhook` publicly (for example via a tunnel), then in Luma: **Settings → Developer → Webhooks**, create a webhook with event type **Guest Updated** pointing at that URL.
+Expose a URL publicly (for example via a tunnel). Recommended path: **`http://your-host:<port>/luma/check-in`**. The same server also accepts **`/luma/webhook`**, **`/luma/webhook/check-in`**, and **`/`** for backwards compatibility.
+
+In Luma: **Settings → Developer → Webhooks**, create a webhook with action **Guest Updated** only (not “all actions”, unless you accept extra traffic that this server will ignore after the `type` check).
 
 ## Usage
 

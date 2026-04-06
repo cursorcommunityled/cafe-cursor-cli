@@ -1,7 +1,13 @@
 #!/usr/bin/env bun
 /**
- * HTTP server for Luma webhooks: on guest.updated, verify check-in via Luma API
- * and email a Cursor credit (Resend). See https://docs.luma.com/reference/getting-started-with-your-api
+ * Check-in webhook for Luma: Luma does not expose a separate "guest.checked_in" event type;
+ * check-in is delivered as **guest.updated** (see https://help.lu.ma/p/webhooks). This server
+ * only credits after confirming check-in via GET /v1/event/get-guest (per-ticket checked_in_at).
+ *
+ * Register in Luma (Settings → Developer → Webhooks): event **Guest Updated**, URL e.g.
+ * https://your-host/luma/check-in
+ *
+ * See https://docs.luma.com/reference/getting-started-with-your-api
  *
  * Env:
  *   LUMA_API_KEY       - x-luma-api-key (Luma Plus)
@@ -18,7 +24,7 @@ import {
 } from "./luma/verifyWebhookSignature.js";
 import * as localStorage from "./utils/localStorage.js";
 
-function extractGuestPayload(body: unknown): {
+function extractGuestUpdatedPayload(body: unknown): {
   eventId: string;
   guestId: string;
   email: string;
@@ -29,8 +35,8 @@ function extractGuestPayload(body: unknown): {
     return null;
   }
   const root = body as Record<string, unknown>;
-  const type = typeof root.type === "string" ? root.type : "";
-  if (type && type !== "guest.updated") {
+  // Luma's check-in signal is the guest.updated webhook (not a separate event type).
+  if (root.type !== "guest.updated") {
     return null;
   }
 
@@ -84,8 +90,8 @@ function extractGuestPayload(body: unknown): {
   };
 }
 
-async function handleGuestUpdated(
-  payload: NonNullable<ReturnType<typeof extractGuestPayload>>,
+async function handleCheckInFromGuestUpdated(
+  payload: NonNullable<ReturnType<typeof extractGuestUpdatedPayload>>,
   lumaApiKey: string,
   dataPath: string
 ): Promise<{ ok: boolean; status: number; message: string }> {
@@ -159,7 +165,14 @@ Bun.serve({
     }
 
     const url = new URL(req.url);
-    if (url.pathname !== "/luma/webhook" && url.pathname !== "/") {
+    const path = url.pathname.replace(/\/$/, "") || "/";
+    const allowedPaths = new Set([
+      "/",
+      "/luma/webhook",
+      "/luma/check-in",
+      "/luma/webhook/check-in",
+    ]);
+    if (!allowedPaths.has(path)) {
       return new Response("Not Found", { status: 404 });
     }
 
@@ -191,7 +204,7 @@ Bun.serve({
       });
     }
 
-    const payload = extractGuestPayload(parsed);
+    const payload = extractGuestUpdatedPayload(parsed);
     if (!payload) {
       return new Response(JSON.stringify({ ok: true, ignored: true }), {
         status: 200,
@@ -199,7 +212,7 @@ Bun.serve({
       });
     }
 
-    const out = await handleGuestUpdated(payload, lumaApiKey, dataPath);
+    const out = await handleCheckInFromGuestUpdated(payload, lumaApiKey, dataPath);
     return new Response(JSON.stringify({ ok: out.ok, message: out.message }), {
       status: out.status,
       headers: { "Content-Type": "application/json" },
@@ -208,5 +221,6 @@ Bun.serve({
 });
 
 console.log(
-  `Luma webhook server listening on http://127.0.0.1:${port}/luma/webhook (data: ${dataPath})`
+  `Luma check-in webhook listening on http://127.0.0.1:${port}/luma/check-in (also /luma/webhook, /)  data: ${dataPath}`
 );
+console.log(`Subscribe in Luma to Guest Updated (guest.updated) pointing at this URL.`);
