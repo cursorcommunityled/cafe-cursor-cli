@@ -1,25 +1,40 @@
 import React, { useState } from "react";
 import { Box, Text, useInput } from "ink";
-import { exec } from "child_process";
+import { execFile } from "child_process";
+
+const ALLOWED_OPEN_HOSTS = new Set([
+  "linkedin.com",
+  "www.linkedin.com",
+  "x.com",
+  "www.x.com",
+  "twitter.com",
+  "www.twitter.com",
+]);
+
+function isAllowedHttpUrl(raw: string): boolean {
+  try {
+    const parsed = new URL(raw);
+    if (parsed.protocol !== "https:") return false;
+    return ALLOWED_OPEN_HOSTS.has(parsed.hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
 
 const openUrl = (url: string) => {
-  let command;
-  switch (process.platform) {
-    case "darwin":
-      command = `open "${url}"`;
-      break;
-    case "win32":
-      command = `start "" "${url}"`;
-      break;
-    default:
-      command = `xdg-open "${url}"`;
+  if (!isAllowedHttpUrl(url)) {
+    return;
   }
-  
-  exec(command, (error) => {
-    if (error) {
-      // Silently fail if unable to open URL
-    }
-  });
+
+  if (process.platform === "darwin") {
+    execFile("/usr/bin/open", [url], () => {});
+    return;
+  }
+  if (process.platform === "win32") {
+    execFile("C:\\Windows\\System32\\cmd.exe", ["/c", "start", "", url], () => {});
+    return;
+  }
+  execFile("/usr/bin/xdg-open", [url], () => {});
 };
 
 export interface Contact {
